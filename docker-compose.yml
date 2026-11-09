@@ -1,0 +1,23 @@
+# KWE Instant Quote Admin — admin UI + Java backend.
+#
+# 1. cp .env.example .env   and fill in the database values
+# 2. Build the backend jar once (jOOQ codegen reads your DB, so credentials stay out of the image):
+#      cd backend-java && ./mvnw clean package -DskipTests && cd ..
+# 3. docker compose up --build
+#    Admin UI → http://localhost:3000   Backend → http://localhost:8080
+#
+# UI only with dummy data (no backend / DB):  docker compose up --build admin-ui
+#   (set VITE_AUTH_MODE=demo in .env)
+
+services:
+  frontend:
+    container_name: instantquote-frontend
+    build:
+      context: ./admin-ui
+      dockerfile: Dockerfile
+      args:
+        VITE_AUTH_MODE: demo
+        VITE_BACKEND_URL: ""
+    ports:
+      - "3001:8080"
+    restart: unless-stopped
