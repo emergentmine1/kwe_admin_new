@@ -106,7 +106,7 @@ export function RateMatrixEditor({ form }: Readonly<{ form: ProfileForm }>) {
                         value={field.value ?? ''}
                         onChange={field.onChange}
                         options={DEST_PORTS.filter((d) => d.code === field.value || !used.includes(d.code)).map((d) => [d.code, `${d.name} (${d.code})`])}
-                        className={cn(CELL, errors.rows?.[r]?.destPort && 'border-red-400')}
+                        invalid={!!errors.rows?.[r]?.destPort}
                       />
                     )}
                   />

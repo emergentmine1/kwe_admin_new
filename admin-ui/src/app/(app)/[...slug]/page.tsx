@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { NoPermission } from '@/components/common/NoPermission';
 import { Placeholder } from '@/components/common/Placeholder';
-import { WRITE_ROLE } from '@/lib/auth/roles';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { requireUser } from '@/lib/server/session';
 import { slug } from '@/lib/utils';
 
@@ -26,7 +26,7 @@ export default async function PlaceholderPage({ params }: Readonly<{ params: Pro
   const path = (await params).slug.join('/');
   const title = PLACEHOLDERS[path] ?? (path.startsWith('shipments/') ? 'Shipment Details' : undefined);
   if (!title) redirect('/');
-  const { user, permitted } = await requireUser(WRITE_ROLE);
-  if (!permitted) return <NoPermission role={user.role} />;
+  const { user, permitted } = await requireUser(PERMISSIONS.ADMIN_VIEW);
+  if (!permitted) return <NoPermission user={user} />;
   return <Placeholder title={title} id={`placeholder-${slug(path)}`} />;
 }

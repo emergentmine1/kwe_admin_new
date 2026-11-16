@@ -79,6 +79,19 @@
   }
 }
 
+/* Radix renders a hidden native <select> with an inline style attribute; CSP drops that, so hide it here. */
+select[aria-hidden='true'][tabindex='-1'] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @utility kwe-shadow {
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
 }

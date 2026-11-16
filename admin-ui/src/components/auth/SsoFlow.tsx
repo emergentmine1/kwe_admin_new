@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { MicrosoftPasswordCard } from '@/components/auth/MicrosoftPasswordCard';
 import { OktaUsernameCard } from '@/components/auth/OktaUsernameCard';
@@ -10,7 +9,6 @@ import { withBasePath } from '@/lib/utils';
 const LAST_EMAIL_KEY = 'kwe_admin_last_email';
 
 export function SsoFlow({ from, hint }: Readonly<{ from: string; hint: string }>) {
-  const router = useRouter();
   const [email, setEmail] = useState('');
   const hydrated = useHydrated();
   const [busy, setBusy] = useState(false);
@@ -32,8 +30,8 @@ export function SsoFlow({ from, hint }: Readonly<{ from: string; hint: string }>
         return;
       }
       localStorage.setItem(LAST_EMAIL_KEY, email);
-      router.replace(body.redirect);
-      router.refresh();
+      // Full load: the signed-in app starts with a fresh document and CSP nonce.
+      globalThis.location.assign(withBasePath(body.redirect));
     } catch {
       setError('Could not reach the sign-in service. Please try again.');
       setBusy(false);

@@ -9,7 +9,7 @@ interface SessionContextValue {
   user: SessionUser;
   authMode: AuthMode;
   dataSource: DataSource;
-  canWrite: boolean;
+  can: (permission: string) => boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -22,7 +22,7 @@ interface Props {
   children: ReactNode;
 }
 
-/** Client view of the server-verified session. Re-runs the server role check every 5 minutes. */
+/** Client view of the server-verified session. Re-runs the server permission check every 5 minutes. */
 export function SessionProvider({ user, authMode, dataSource, children }: Readonly<Props>) {
   const router = useRouter();
 
@@ -37,7 +37,7 @@ export function SessionProvider({ user, authMode, dataSource, children }: Readon
   }, [router]);
 
   const value = useMemo(
-    () => ({ user, authMode, dataSource, canWrite: user.role === 'READ_WRITE' }),
+    () => ({ user, authMode, dataSource, can: (permission: string) => user.permissions.includes(permission) }),
     [user, authMode, dataSource],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const session = { email: emailFromToken(tokens.access_token), accessToken: tokens.access_token, idToken: tokens.id_token };
   const state = await resolveState(session);
   if (state.status === 'anonymous') return fail(request, 'sso');
-  const target = state.status === 'authorized' ? landingFor(state.user.role, saved.from) : '/access-denied';
+  const target = state.status === 'authorized' ? landingFor(state.user, saved.from) : '/access-denied';
 
   const response = redirectTo(request, target);
   response.cookies.set(OIDC_COOKIE, '', cookieOptions(0));

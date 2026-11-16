@@ -37,7 +37,7 @@ export function LeadFilters({ filters, onChange }: Readonly<{ filters: LeadFilte
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:flex">
           <FilterSelect id="leads-filter-status" label="Status" value={filters.status} onChange={set('status')} all="All statuses"
-            options={LEAD_STATUSES.map((s) => [s, s])} className="md:w-40" />
+            options={LEAD_STATUSES.map((s) => [s, s.charAt(0).toUpperCase() + s.slice(1)])} className="md:w-40" />
           <FilterSelect id="leads-filter-team" label="Sales team" value={filters.team} onChange={set('team')} all="All sales teams"
             options={SALES_TEAMS.map((t) => [t.id, t.name])} className="md:w-52" />
           <FilterSelect id="leads-filter-type" label="Customer type" value={filters.type} onChange={set('type')} all="All types"

@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { CATEGORIES, calcMethod } from '@/lib/rate-profiles/constants';
 import type { Category, RateProfile, SaveProfileInput } from '@/lib/rate-profiles/types';
 
+// No eval/new Function: keeps the strict CSP (no 'unsafe-eval') free of violations.
+z.config({ jitless: true });
+
 const WEIGHT_BREAK_ALLOWED = /[^0-9<>=]/g;
 export const WEIGHT_BREAK_PATTERN = /^(<|>|<=|>=|=)?\d+$/;
 export const sanitizeWeightBreak = (v: unknown) => String(v ?? '').replace(WEIGHT_BREAK_ALLOWED, '');

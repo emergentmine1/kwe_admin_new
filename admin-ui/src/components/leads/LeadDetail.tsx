@@ -12,7 +12,8 @@ import { initials, tid } from '@/lib/utils';
 interface Props {
   ref?: Ref<HTMLElement>;
   lead: Lead | null;
-  canWrite: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
   onStatusChange: (id: string, status: LeadStatus) => void;
   onDelete: (id: string) => void;
 }
@@ -71,7 +72,7 @@ function Shipment({ lead }: Readonly<{ lead: Lead }>) {
   );
 }
 
-export function LeadDetail({ ref, lead, canWrite, onStatusChange, onDelete }: Readonly<Props>) {
+export function LeadDetail({ ref, lead, canEdit, canDelete, onStatusChange, onDelete }: Readonly<Props>) {
   return (
     <aside ref={ref} {...tid('lead-detail')} className="kwe-shadow h-fit scroll-mt-20 rounded-2xl border border-slate-100 bg-white p-4 sm:p-6 lg:sticky lg:top-24">
       {lead ? (
@@ -108,8 +109,8 @@ export function LeadDetail({ ref, lead, canWrite, onStatusChange, onDelete }: Re
           <Shipment lead={lead} />
           <div>
             <Eyebrow className="text-xs text-slate-600">Status</Eyebrow>
-            <FilterSelect id="lead-status-select" label="Lead status" value={lead.status} disabled={!canWrite}
-              onChange={(v) => onStatusChange(lead.id, v as LeadStatus)} options={LEAD_STATUSES.map((s) => [s, s])} className="mt-1.5 h-11 capitalize" />
+            <FilterSelect id="lead-status-select" label="Lead status" value={lead.status} disabled={!canEdit}
+              onChange={(v) => onStatusChange(lead.id, v as LeadStatus)} options={LEAD_STATUSES.map((s) => [s, s.charAt(0).toUpperCase() + s.slice(1)])} className="mt-1.5 h-11" />
           </div>
           <div>
             <Eyebrow className="text-xs text-slate-600">Sales team</Eyebrow>
@@ -118,7 +119,7 @@ export function LeadDetail({ ref, lead, canWrite, onStatusChange, onDelete }: Re
             </div>
           </div>
           {lead.notes && <div {...tid('lead-notes')} className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-xs text-amber-900">{lead.notes}</div>}
-          {canWrite && (
+          {canDelete && (
             <Button variant="outline" onClick={() => onDelete(lead.id)} {...tid('lead-delete-button')} name="lead-delete-button"
               className="h-10 w-full gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50">
               <Trash2 className="h-4 w-4" /> Delete lead

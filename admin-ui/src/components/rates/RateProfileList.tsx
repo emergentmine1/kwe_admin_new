@@ -4,7 +4,7 @@ import { Building2, Download, FileSpreadsheet, Filter, Plane, Plus, Upload } fro
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Card, LoadingBlock } from '@/components/common/Blocks';
 import { ConfirmProfileAction } from '@/components/rates/ConfirmProfileAction';
@@ -13,6 +13,7 @@ import { EMPTY_PROFILE_FILTERS, ProfileFilters, applyProfileFilters, type Profil
 import { ProfileTable } from '@/components/rates/ProfileTable';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { downloadCsv, downloadXlsx } from '@/lib/export';
 import { CATEGORIES } from '@/lib/rate-profiles/constants';
 import { useProfileStore } from '@/lib/rate-profiles/use-profile-store';
@@ -29,7 +30,8 @@ interface Props {
 export function RateProfileList({ category, initialProfiles }: Readonly<Props>) {
   const meta = CATEGORIES[category];
   const router = useRouter();
-  const { user } = useSession();
+  const { user, can } = useSession();
+  const perms = { create: can(PERMISSIONS.RATE_CREATE), edit: can(PERMISSIONS.RATE_EDIT), remove: can(PERMISSIONS.RATE_DELETE) };
   const store = useProfileStore();
   const [all, setAll] = useState<RateProfile[]>(initialProfiles ?? []);
   const [loading, setLoading] = useState(initialProfiles === null);
@@ -125,11 +127,13 @@ export function RateProfileList({ category, initialProfiles }: Readonly<Props>) 
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button asChild className="h-10 gap-1.5 rounded-xl bg-kwe-ink text-white hover:bg-slate-800">
-              <Link href={`/admin/pricing/${category}/new`} {...tid('profile-new')}>
-                <Plus className="h-4 w-4" /> New Matrix
-              </Link>
-            </Button>
+            {perms.create && (
+              <Button asChild className="h-10 gap-1.5 rounded-xl bg-kwe-ink text-white hover:bg-slate-800">
+                <Link href={`/admin/pricing/${category}/new`} {...tid('profile-new')}>
+                  <Plus className="h-4 w-4" /> New Matrix
+                </Link>
+              </Button>
+            )}
           </div>
         </div>
         <ProfileFilters category={category} filters={filters} onChange={setFilters} profiles={all} />
@@ -151,6 +155,7 @@ export function RateProfileList({ category, initialProfiles }: Readonly<Props>) 
         <ProfileTable
           list={list}
           sort={sort}
+          perms={perms}
           onSortChange={setSort}
           onView={(p) => router.push(`/admin/pricing/profile/${p.id}`)}
           onClone={(p) => router.push(`/admin/pricing/${category}/new?cloneFrom=${p.id}`)}

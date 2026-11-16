@@ -7,8 +7,7 @@ import { LogoutButton } from '@/components/auth/LogoutButton';
 import { useSession } from '@/components/auth/SessionProvider';
 import { BrandLogo } from '@/components/common/BrandLogo';
 import { UserAvatar } from '@/components/common/UserAvatar';
-import { ROLE_LABELS } from '@/lib/auth/roles';
-import { isActivePath, navFor } from '@/lib/nav';
+import { isActivePath, navFor, type NavItem } from '@/lib/nav';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -55,30 +54,9 @@ export function Sidebar({ idPrefix, collapsed = false, onToggleCollapse, onNavig
 
       <nav aria-label="Administration" className="flex-1 space-y-1 overflow-y-auto px-2 py-3">
         {!collapsed && <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">Administration</div>}
-        {navFor(user.role).map((item) => {
-          const active = isActivePath(pathname, item.href);
-          const id = `${idPrefix}-nav-${item.key}`;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              id={id}
-              data-testid={id}
-              title={collapsed ? item.label : undefined}
-              aria-current={active ? 'page' : undefined}
-              onClick={onNavigate}
-              className={cn(
-                'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                active ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white',
-                collapsed && 'justify-center px-2',
-              )}
-            >
-              {active && <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-kwe-gold" />}
-              <item.icon className={cn('h-4 w-4 shrink-0', active ? 'text-kwe-gold' : 'text-slate-400')} />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+        {navFor(user).map((item) => (
+          <NavEntry key={item.code} item={item} depth={0} idPrefix={idPrefix} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+        ))}
       </nav>
 
       {!collapsed && (
@@ -90,7 +68,7 @@ export function Sidebar({ idPrefix, collapsed = false, onToggleCollapse, onNavig
                 {user.email}
               </div>
               <div id={`${idPrefix}-user-role`} data-testid={`${idPrefix}-user-role`} className="truncate text-[11px] text-slate-400">
-                {ROLE_LABELS[user.role]}
+                {user.name ?? `${user.permissions.length} permissions`}
               </div>
             </div>
           </div>
@@ -103,5 +81,48 @@ export function Sidebar({ idPrefix, collapsed = false, onToggleCollapse, onNavig
         </div>
       )}
     </aside>
+  );
+}
+
+interface EntryProps {
+  item: NavItem;
+  depth: number;
+  idPrefix: string;
+  pathname: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}
+
+/** One md_menus entry; children (parentmenucode) render indented underneath. */
+function NavEntry({ item, depth, idPrefix, pathname, collapsed, onNavigate }: Readonly<EntryProps>) {
+  const id = `${idPrefix}-nav-${item.code.toLowerCase()}`;
+  const active = !!item.href && isActivePath(pathname, item.href);
+  const body = (
+    <>
+      {active && <span className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full bg-kwe-gold" />}
+      <item.icon className={cn('h-4 w-4 shrink-0', active ? 'text-kwe-gold' : 'text-slate-400')} />
+      {!collapsed && <span>{item.label}</span>}
+    </>
+  );
+  const cls = cn(
+    'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+    active ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-800/60 hover:text-white',
+    collapsed && 'justify-center px-2',
+    depth > 0 && !collapsed && 'ml-4',
+  );
+  return (
+    <>
+      {item.href ? (
+        <Link href={item.href} id={id} data-testid={id} title={collapsed ? item.label : undefined}
+          aria-current={active ? 'page' : undefined} onClick={onNavigate} className={cls}>
+          {body}
+        </Link>
+      ) : (
+        <div id={id} data-testid={id} className={cn(cls, 'cursor-default hover:bg-transparent')}>{body}</div>
+      )}
+      {item.children.map((child) => (
+        <NavEntry key={child.code} item={child} depth={depth + 1} idPrefix={idPrefix} pathname={pathname} collapsed={collapsed} onNavigate={onNavigate} />
+      ))}
+    </>
   );
 }

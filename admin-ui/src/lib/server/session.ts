@@ -4,7 +4,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { EncryptJWT, jwtDecrypt } from 'jose';
 import {
-  EXPIRED_MESSAGE, UNAVAILABLE_MESSAGE, isRole, type AuthState, type Role, type SessionUser,
+  EXPIRED_MESSAGE, UNAVAILABLE_MESSAGE, isSessionUser, type AuthState, type SessionUser,
 } from '@/lib/auth/roles';
 import { authMode, backendUrl, basePath, sessionSecret } from '@/lib/server/config';
 import { resolveDemoUser } from '@/lib/server/demo-users';
@@ -58,15 +58,15 @@ async function fetchBackendRole(accessToken: string): Promise<AuthState> {
     if (res.status === 401) return { status: 'anonymous', message: EXPIRED_MESSAGE };
     if (res.status === 403) return { status: 'denied' };
     if (!res.ok) return { status: 'unavailable', message: UNAVAILABLE_MESSAGE };
-    const me = (await res.json()) as { email?: string; role?: unknown };
-    if (!isRole(me.role) || !me.email) return { status: 'denied' };
-    return { status: 'authorized', user: { email: me.email, role: me.role } };
+    const me: unknown = await res.json();
+    if (!isSessionUser(me) || me.permissions.length === 0) return { status: 'denied' };
+    return { status: 'authorized', user: { email: me.email, name: me.name ?? null, permissions: me.permissions, menus: me.menus } };
   } catch {
     return { status: 'unavailable', message: UNAVAILABLE_MESSAGE };
   }
 }
 
-/** Role is resolved from the trusted source on every request, never from the cookie. */
+/** Permissions are resolved from the trusted source on every request, never from the cookie. */
 export async function resolveState(session: SessionData | null): Promise<AuthState> {
   if (!session?.email) return { status: 'anonymous' };
   if (authMode() === 'demo') {
@@ -88,10 +88,10 @@ async function currentPath() {
   return (await headers()).get('x-kwe-path') ?? '/';
 }
 
-/** Redirects anonymous / denied users. Returns the user and whether their role may open the page. */
-export async function requireUser(allowed?: readonly Role[]): Promise<{ user: SessionUser; permitted: boolean }> {
+/** Redirects anonymous / denied users. Returns the user and whether they hold `permission`. */
+export async function requireUser(permission?: string): Promise<{ user: SessionUser; permitted: boolean }> {
   const state = await getAuthState();
   if (state.status === 'denied' || state.status === 'unavailable') redirect('/access-denied');
   if (state.status !== 'authorized') redirect(`/login?from=${encodeURIComponent(await currentPath())}`);
-  return { user: state.user, permitted: !allowed || allowed.includes(state.user.role) };
+  return { user: state.user, permitted: !permission || state.user.permissions.includes(permission) };
 }

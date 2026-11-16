@@ -2,13 +2,14 @@
 
 import { Clock, List as ListIcon, Sparkles, TrendingUp, Users } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSession } from '@/components/auth/SessionProvider';
 import { LoadingBlock } from '@/components/common/Blocks';
 import { StatCard } from '@/components/common/StatCard';
 import { LeadDetail } from '@/components/leads/LeadDetail';
 import { LeadFilters, EMPTY_LEAD_FILTERS, applyLeadFilters } from '@/components/leads/LeadFilters';
 import { LeadList } from '@/components/leads/LeadList';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { deleteLead, listLeads, updateLead, type Lead, type LeadStatus } from '@/lib/leads-store';
 import { useHydrated } from '@/lib/use-hydrated';
 import { tid } from '@/lib/utils';
@@ -16,7 +17,9 @@ import { tid } from '@/lib/utils';
 const count = (leads: Lead[], status: LeadStatus) => leads.filter((l) => l.status === status).length;
 
 export function LeadsView() {
-  const { canWrite } = useSession();
+  const { can } = useSession();
+  const canEdit = can(PERMISSIONS.LEAD_EDIT);
+  const canDelete = can(PERMISSIONS.LEAD_DELETE);
   const hydrated = useHydrated();
   const [version, setVersion] = useState(0);
   const [filters, setFilters] = useState(EMPTY_LEAD_FILTERS);
@@ -38,13 +41,13 @@ export function LeadsView() {
     }
   };
   const changeStatus = (id: string, status: LeadStatus) => {
-    if (!canWrite) return;
+    if (!canEdit) return;
     updateLead(id, { status });
     refresh();
     toast.success(`Lead moved to ${status}`);
   };
   const remove = (id: string) => {
-    if (!canWrite) return;
+    if (!canDelete) return;
     deleteLead(id);
     refresh();
     setSelectedId(null);
@@ -84,7 +87,7 @@ export function LeadsView() {
       ) : (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1fr_420px]">
           <LeadList leads={filtered} selectedId={selectedId} onSelect={select} />
-          <LeadDetail ref={detailRef} lead={selected} canWrite={canWrite} onStatusChange={changeStatus} onDelete={remove} />
+          <LeadDetail ref={detailRef} lead={selected} canEdit={canEdit} canDelete={canDelete} onStatusChange={changeStatus} onDelete={remove} />
         </div>
       )}
     </div>

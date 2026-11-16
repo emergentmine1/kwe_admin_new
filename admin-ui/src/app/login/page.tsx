@@ -13,7 +13,7 @@ const ERRORS: Record<string, string> = {
 export default async function LoginPage({ searchParams }: Readonly<{ searchParams: Promise<{ from?: string; error?: string }> }>) {
   const { from, error } = await searchParams;
   const state = await getAuthState();
-  if (state.status === 'authorized') redirect(landingFor(state.user.role, from));
+  if (state.status === 'authorized') redirect(landingFor(state.user, from));
   if (state.status === 'denied') redirect('/access-denied');
 
   let message = error ? ERRORS[error] : undefined;

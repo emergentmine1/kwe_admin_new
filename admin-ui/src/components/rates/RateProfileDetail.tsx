@@ -3,7 +3,7 @@
 import { ArrowLeft, Copy, FileText, Layers, Pencil, Plane, Power, PowerOff, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSession } from '@/components/auth/SessionProvider';
 import { Card, LoadingBlock } from '@/components/common/Blocks';
 import { PageHeader } from '@/components/common/PageHeader';
@@ -12,6 +12,7 @@ import { ConfirmProfileAction } from '@/components/rates/ConfirmProfileAction';
 import { GeneralInfo, WeightBreaksTable } from '@/components/rates/ProfileDetailSections';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PERMISSIONS } from '@/lib/auth/permissions';
 import { CARRIERS, CATEGORIES, ORIGIN_PORTS, nameOf } from '@/lib/rate-profiles/constants';
 import { errorMessage, fmtStamp } from '@/lib/rate-profiles/ui';
 import { useProfileStore } from '@/lib/rate-profiles/use-profile-store';
@@ -22,7 +23,7 @@ const TAB = 'gap-1.5 rounded-none border-b-2 border-transparent px-4 py-2.5 data
 
 export function RateProfileDetail({ id, initialProfile }: Readonly<{ id: string; initialProfile: RateProfile | null }>) {
   const router = useRouter();
-  const { user } = useSession();
+  const { user, can } = useSession();
   const store = useProfileStore();
   const [p, setP] = useState<RateProfile | null | undefined>(initialProfile ?? undefined);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -91,19 +92,19 @@ export function RateProfileDetail({ id, initialProfile }: Readonly<{ id: string;
           </div>
         </div>
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-          <Button variant="outline" className="gap-1.5 rounded-xl" {...tid('detail-edit')} onClick={() => router.push(`/admin/pricing/profile/${p.id}/edit`)}>
+          {can(PERMISSIONS.RATE_EDIT) && <Button variant="outline" className="gap-1.5 rounded-xl" {...tid('detail-edit')} onClick={() => router.push(`/admin/pricing/profile/${p.id}/edit`)}>
             <Pencil className="h-4 w-4" /> Edit
-          </Button>
-          <Button variant="outline" className="gap-1.5 rounded-xl" {...tid('detail-clone')} onClick={() => router.push(`/admin/pricing/${p.category}/new?cloneFrom=${p.id}`)}>
+          </Button>}
+          {can(PERMISSIONS.RATE_CREATE) && <Button variant="outline" className="gap-1.5 rounded-xl" {...tid('detail-clone')} onClick={() => router.push(`/admin/pricing/${p.category}/new?cloneFrom=${p.id}`)}>
             <Copy className="h-4 w-4" /> Clone
-          </Button>
-          <Button variant="outline" className={cn('gap-1.5 rounded-xl', active ? 'border-amber-200 text-amber-700' : 'border-emerald-200 text-emerald-700')}
+          </Button>}
+          {can(PERMISSIONS.RATE_EDIT) && <Button variant="outline" className={cn('gap-1.5 rounded-xl', active ? 'border-amber-200 text-amber-700' : 'border-emerald-200 text-emerald-700')}
             {...tid('detail-toggle-status')} onClick={() => (active ? setPending({ action: 'deactivate', profile: p }) : void toggle())}>
             {active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />} {active ? 'Deactivate' : 'Activate'}
-          </Button>
-          <Button variant="outline" className="gap-1.5 rounded-xl border-red-200 text-red-600" {...tid('detail-delete')} onClick={() => setPending({ action: 'delete', profile: p })}>
+          </Button>}
+          {can(PERMISSIONS.RATE_DELETE) && <Button variant="outline" className="gap-1.5 rounded-xl border-red-200 text-red-600" {...tid('detail-delete')} onClick={() => setPending({ action: 'delete', profile: p })}>
             <Trash2 className="h-4 w-4" /> Delete
-          </Button>
+          </Button>}
         </div>
       </Card>
       <Tabs defaultValue="general" className="kwe-shadow rounded-2xl border border-slate-100 bg-white p-4">

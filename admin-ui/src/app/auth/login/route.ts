@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { isEmail, normaliseEmail } from '@/lib/auth/roles';
-import { homeFor, landingFor } from '@/lib/nav';
+import { landingFor } from '@/lib/nav';
 import { authMode, backendUrl } from '@/lib/server/config';
 import { DEMO_PASSWORD } from '@/lib/server/demo-users';
 import { isSameOrigin, jsonError } from '@/lib/server/request';
@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
 
   const state = await resolveState(login.session);
   const from = typeof body.from === 'string' ? body.from : null;
-  const redirect = state.status === 'authorized' ? landingFor(state.user.role, from) : '/access-denied';
-  const response = NextResponse.json({ redirect: redirect || homeFor() });
+  const redirect = state.status === 'authorized' ? landingFor(state.user, from) : '/access-denied';
+  const response = NextResponse.json({ redirect });
   response.cookies.set(SESSION_COOKIE, await seal(login.session, login.ttl), cookieOptions(login.ttl));
   return response;
 }

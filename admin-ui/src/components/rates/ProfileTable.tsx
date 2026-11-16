@@ -42,8 +42,15 @@ function ariaSort(sort: SortState, key: SortKey | null) {
   return sort.dir === 'asc' ? 'ascending' : 'descending';
 }
 
+export interface RowPermissions {
+  create: boolean;
+  edit: boolean;
+  remove: boolean;
+}
+
 interface Props {
   list: RateProfile[];
+  perms: RowPermissions;
   sort: SortState;
   onSortChange: Dispatch<SetStateAction<SortState>>;
   onView: (p: RateProfile) => void;
@@ -52,7 +59,7 @@ interface Props {
   onDelete: (p: RateProfile) => void;
 }
 
-export function ProfileTable({ list, sort, onSortChange, onView, onClone, onToggleStatus, onDelete }: Readonly<Props>) {
+export function ProfileTable({ list, perms, sort, onSortChange, onView, onClone, onToggleStatus, onDelete }: Readonly<Props>) {
   const toggleSort = (key: SortKey) =>
     onSortChange((cur) => (cur.key === key ? { key, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
 
@@ -95,7 +102,7 @@ export function ProfileTable({ list, sort, onSortChange, onView, onClone, onTogg
         </thead>
         <tbody className="text-sm">
           {list.map((p) => (
-            <ProfileRow key={p.id} p={p} onView={onView} onClone={onClone} onToggleStatus={onToggleStatus} onDelete={onDelete} />
+            <ProfileRow key={p.id} p={p} perms={perms} onView={onView} onClone={onClone} onToggleStatus={onToggleStatus} onDelete={onDelete} />
           ))}
         </tbody>
       </table>
@@ -118,7 +125,7 @@ function Cell({ children, className, title, id }: Readonly<{ children: ReactNode
 
 type RowProps = Omit<Props, 'list' | 'sort' | 'onSortChange'> & { p: RateProfile };
 
-function ProfileRow({ p, onView, onClone, onToggleStatus, onDelete }: Readonly<RowProps>) {
+function ProfileRow({ p, perms, onView, onClone, onToggleStatus, onDelete }: Readonly<RowProps>) {
   const code = p.profileCode;
   const active = p.status === 'ACTIVE';
   const carrier = nameOf(CARRIERS, p.carrierCode);
@@ -156,17 +163,17 @@ function ProfileRow({ p, onView, onClone, onToggleStatus, onDelete }: Readonly<R
           <Button variant="ghost" size="icon" className="h-8 w-8" title="View" aria-label={`View ${code}`} {...tid(`view-${code}`)} onClick={() => onView(p)}>
             <Eye className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" title="Clone" aria-label={`Clone ${code}`} {...tid(`clone-${code}`)} onClick={() => onClone(p)}>
+          {perms.create && <Button variant="ghost" size="icon" className="h-8 w-8" title="Clone" aria-label={`Clone ${code}`} {...tid(`clone-${code}`)} onClick={() => onClone(p)}>
             <Copy className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className={cn('h-8 w-8', active ? 'text-amber-600' : 'text-emerald-600')}
+          </Button>}
+          {perms.edit && <Button variant="ghost" size="icon" className={cn('h-8 w-8', active ? 'text-amber-600' : 'text-emerald-600')}
             title={active ? 'Deactivate' : 'Activate'} aria-label={`${active ? 'Deactivate' : 'Activate'} ${code}`}
             {...tid(`toggle-status-${code}`)} onClick={() => onToggleStatus(p)}>
             {active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" title="Delete" aria-label={`Delete ${code}`} {...tid(`delete-${code}`)} onClick={() => onDelete(p)}>
+          </Button>}
+          {perms.remove && <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" title="Delete" aria-label={`Delete ${code}`} {...tid(`delete-${code}`)} onClick={() => onDelete(p)}>
             <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          </Button>}
         </div>
       </td>
     </tr>

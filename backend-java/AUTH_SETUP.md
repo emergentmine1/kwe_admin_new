@@ -1,110 +1,73 @@
-# KWE Instant Quote Admin — Authentication & Roles
+# Authentication, RBAC & security setup
 
-## What is done vs. what needs your environment
+## Model (quoteownr schema, `db/003_rbac_schema.sql`)
 
-| Piece | Status |
-|---|---|
-| Admin login page, logout, session expiry, Access Denied page | Done (admin app) |
-| Role-based menu (Pricing Matrix / Customer Leads / Quotes) + route guards | Done (admin app) |
-| Spring Security: token validation, DB role lookup, 401/403 on every admin API | Code done — **compile & run on your machine** (needs DB for jOOQ) |
-| `kwe_admin_users`, `kwe_rate_profile`, `kwe_rate_matrix` SQL (needs the `btree_gist` extension) | Done — **you run the scripts** |
-| Rate Profile REST API (READ_WRITE only) | Code done — untested here (no DB in this environment) |
-| Okta + Microsoft Entra ID sign-in | Code done & configurable — **not operational until Okta values are supplied and tested** |
-| Temporary dummy logins | Done (`static` = via backend, `demo` = browser only) |
-
-## 1. Database (run before `mvn compile` — jOOQ codegen reads these tables)
-
-```bash
-psql "$DB_URL" -f db/001_kwe_admin_users.sql
-psql "$DB_URL" -f db/002_kwe_rate_profile.sql
-psql "$DB_URL" -f db/900_seed_dummy_admin_users.sql   # dummy users, NOT for production
+```
+pf_users ── pf_userroles ── md_roles ── pf_rolepermissions ── md_permissions
+md_menus ── pf_menupermissions ── md_permissions        (md_menus.parentmenucode → submenus)
+pf_apipermissions (httpmethod + endpointpattern → permissioncode)
 ```
 
-Rules enforced by the table: unique lower-case email, role ∈ {READ_ONLY, READ_WRITE}, new users default to
-`is_active = false`, an active user must have a role. Add a real user:
+Additions agreed on top of the design document:
+- `pf_users.accountid` defaults to `uuidv7()` (PostgreSQL 18+ / Aurora PostgreSQL 18).
+- Unique: `LOWER(emailid)`, `(accountid, rolecode)`, `(rolecode, permissioncode)`, `(menucode, permissioncode)`,
+  `(httpmethod, endpointpattern, permissioncode)`, `md_permissions (function, action)`.
 
-```sql
-INSERT INTO quoteownr.kwe_admin_users (email, role, is_active) VALUES ('jane.doe@kwe.com', 'READ_WRITE', TRUE);
-```
+## Database scripts (run in order, before `mvn compile` — jOOQ codegen reads the tables)
 
-## 2. Backend environment (Spring, `backend-java`)
-
-| Variable | Example | Notes |
-|---|---|---|
-| `KWE_AUTH_MODE` | `okta` / `static` | Default `okta`. `static` = dummy logins, local only |
-| `OKTA_ISSUER` | `https://kwe.okta.com/oauth2/default` | Required in okta mode (custom authorization server) |
-| `OKTA_AUDIENCE` | `api://kwe-instant-quote` | Must match the `aud` of Okta access tokens |
-| `KWE_AUTH_EMAIL_CLAIMS` | `email,sub` | Claims checked (in order) for the user's email |
-| `STATIC_JWT_SECRET` | 32+ random chars | Static mode only |
-| `STATIC_LOGIN_PASSWORD` | `Demo@123` | Static mode only; shared dummy password, never stored in DB |
-| `STATIC_JWT_TTL_MINUTES` | `60` | Static token lifetime |
-| `KWE_CORS_ALLOWED_ORIGIN_PATTERNS` | `http://localhost:*` | Admin app origin(s) |
-
-The app fails fast on startup if okta mode has no issuer or static mode has a short secret.
-
-## 3. Admin app environment (`.env` in the repo root, see `.env.example`)
-
-| Variable | Notes |
+| Script | Where |
 |---|---|
-| `VITE_BACKEND_URL` | e.g. `http://localhost:8080` |
-| `VITE_AUTH_MODE` | `okta` (production), `static` (dummy logins via backend), `demo` (browser-only, previews) |
-| `VITE_OKTA_ISSUER` | Same issuer as backend |
-| `VITE_OKTA_CLIENT_ID` | Okta SPA app client ID (public, no secret) |
-| `VITE_OKTA_IDP_ID` | Optional: Okta IdP ID of the Entra ID provider, sends users straight to Microsoft |
-| `VITE_OKTA_SCOPES` | Default `openid profile email` |
+| `002_kwe_rate_profile.sql` | all environments (needs `btree_gist`) |
+| `003_rbac_schema.sql` | all environments |
+| `004_drop_legacy_kwe_admin_users.sql` | once, after moving users out of the old table |
+| `900_seed_dummy_rbac.sql` | **DEV / local only** — dummy roles, permissions, menus, API rules, 4 users |
 
-If `VITE_AUTH_MODE` is unset: `demo` in `yarn start` (dev), `okta` in production builds.
+Load your approved roles / permissions / menus / API rules in QA, UAT and PROD (not the 900 seed).
 
-## 4. Okta / Entra ID setup (environment owner)
+## How a request is authorized
 
-1. Entra ID: register an app for Okta, redirect URI `https://<okta-domain>/oauth2/v1/authorize/callback`.
-2. Okta: Security → Identity Providers → add OpenID Connect IdP with the Entra client ID/secret; note the IdP ID.
-   Add a routing rule (e.g. `@kwe.com` → Entra) or set `VITE_OKTA_IDP_ID`.
-3. Okta: Applications → Create OIDC **Single-Page Application**, Authorization Code + PKCE, no client secret.
-   Sign-in redirect `https://<admin-host>/login/callback`, sign-out redirect `https://<admin-host>/login`.
-4. Okta custom authorization server: audience = `OKTA_AUDIENCE`; make sure access tokens carry the
-   user's email in `sub` or an `email` claim. MFA and remembered sessions follow your Okta/Entra policies.
+1. Okta (or static dev) token validated: signature, issuer, audience, expiry.
+2. Email claim normalised (trim + lower-case) and matched to `LOWER(pf_users.emailid)` with `status = TRUE`.
+3. Effective permissions = active roles → their active permissions. **Re-read on every request**, so changes apply
+   immediately. No user / inactive / no permission / DB error ⇒ no authority ⇒ **403**. Fails closed.
+4. Every `/api/**` call (except the public ones) must match an **active `pf_apipermissions` row** (method + Spring
+   PathPattern relative to the context path, e.g. `/api/v1/rate-profiles/{id}`) **and** the caller must hold that
+   row's permission. No matching row ⇒ **403**. Rules are cached for 60 seconds.
+5. `GET /api/v1/auth/me` returns `{ email, name, permissions[], menus[] }`; menus come from `pf_menupermissions`
+   (parents of visible submenus are included). The admin UI builds its navigation from this.
 
-## 5. Flow & enforcement
+Public (no token): `GET /api/v1/masterdata/**`, `GET /api/v1/profiledata/**`, `POST /api/v1/quote-requests`,
+`POST /api/v1/auth/static-login` (static mode only), `/ping`, `/actuator/health`, `/actuator/info`.
 
-1. `/login` → **Login** → Okta (→ Entra ID, MFA) → `/login/callback` (PKCE code exchange).
-2. Admin app calls `GET /api/v1/auth/me` with the access token. The backend validates signature, issuer,
-   audience and expiry, normalises the email, reads `kwe_admin_users` **on every request**, and returns the role.
-3. No row / inactive / invalid role / DB error ⇒ no authority ⇒ **403** ⇒ Access Denied page. Never defaults to a role.
-4. Role is re-checked every 5 minutes in the UI and on every API call server-side.
+## Frontend permission codes
 
-| Endpoint | Rule |
+The UI checks these codes (`admin-ui/src/lib/auth/permissions.ts`): `RATE_VIEW`, `RATE_CREATE`, `RATE_EDIT`,
+`RATE_DELETE`, `LEAD_VIEW`, `LEAD_EDIT`, `LEAD_DELETE`, `QUOTE_VIEW`, `ADMIN_VIEW`. If your catalogue uses other
+codes, change that one file.
+
+## Modes
+
+| `KWE_AUTH_MODE` | Use |
 |---|---|
-| `GET /api/v1/masterdata/**`, `/api/v1/profiledata/**`, `POST /api/v1/quote-requests` | Public (quote form) |
-| `POST /api/v1/auth/static-login` | Public, **static mode only** (404 otherwise) |
-| `GET /api/v1/auth/me` | Any valid token (403 if no role) |
-| `GET /api/v1/quote-requests` | READ_ONLY or READ_WRITE |
-| `PATCH /api/v1/quote-requests/{qrid}/status` | READ_WRITE |
-| `GET/POST/PUT /api/v1/rate-profiles[/{id}]`, `PATCH /api/v1/rate-profiles/{id}/status` | READ_WRITE |
-| anything else | denied |
+| `okta` | QA / UAT / PROD. `OKTA_ISSUER`, `OKTA_AUDIENCE`. Okta app type **Web** (the Next.js server does the code exchange); redirect URI `<APP_PUBLIC_URL><BASE_PATH>/login/callback`. |
+| `static` | Local/dev only. `STATIC_JWT_SECRET` (32+ chars), `STATIC_LOGIN_PASSWORD`. Still requires an active `pf_users` row with a permission. |
 
-401 = missing/invalid/expired token, 403 = authenticated without permission. Stateless bearer tokens (no
-cookies), so CSRF protection is not needed; CORS is restricted to `KWE_CORS_ALLOWED_ORIGIN_PATTERNS`.
+## Security headers
 
-## 6. Dummy accounts (static & demo modes)
+API responses: `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'`,
+HSTS, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Permissions-Policy`, `X-Content-Type-Options`.
+Swagger UI / API docs are off (`SWAGGER_ENABLED=false`) and not reachable through security.
+
+## Context path
+
+`SERVER_CONTEXT_PATH` (e.g. `/rqms-api`). Security rules and `pf_apipermissions` patterns are relative to it, so the
+same data works in every environment. Point the UI's `BACKEND_URL` at `https://<host><context path>`.
+
+## Dummy accounts (900 seed / UI demo mode) — password `Demo@123` (static mode: `STATIC_LOGIN_PASSWORD`)
 
 | Email | Result |
 |---|---|
-| writer@kwe.com | READ_WRITE — Pricing Matrix, Customer Leads, Quotes |
-| reader@kwe.com | READ_ONLY — Customer Leads, Quotes |
-| inactive@kwe.com | Denied (inactive) |
-| outsider@kwe.com | Denied (no record) |
-
-Password: `STATIC_LOGIN_PASSWORD` (static) or `Demo@123` (demo). To switch to Okta later: set
-`KWE_AUTH_MODE=okta` + `OKTA_*` on the backend and `VITE_AUTH_MODE=okta` + `VITE_OKTA_*` in the admin app,
-then delete the dummy rows.
-
-## 7. Tests
-
-```bash
-cd backend-java && ./mvnw test
-```
-- `SecurityRulesTest` — mocked identity provider: 401 without/invalid token, READ_ONLY read-only, READ_WRITE writes,
-  no-role user 403, `/auth/me` role, public quote submit, static login hidden in okta mode.
-- `AdminUserServiceTest` — missing, inactive, invalid role, DB failure (fail closed), email normalisation.
-- `StaticTokenServiceTest` — token issue/verify, wrong password, foreign signature rejected, okta config fail-fast.
+| write-user@kwe.com | RATE_ADMIN — Pricing, Leads, Quotes (all actions) |
+| read-user@kwe.com | SALES_VIEWER — Leads + Quotes, view only |
+| inactive@kwe.com | inactive ⇒ denied |
+| norole@kwe.com | no role ⇒ denied |

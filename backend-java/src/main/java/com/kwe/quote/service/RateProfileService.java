@@ -27,7 +27,7 @@ import com.kwe.quote.repository.RateProfileRepository;
  * enforced by the kwe_rate_profile_no_active_overlap exclusion constraint, which covers races.
  */
 @Service
-@PreAuthorize("hasRole('READ_WRITE')")
+@PreAuthorize("isAuthenticated()")
 public class RateProfileService {
 
     static final Map<String, List<String>> CHARGE_CODES = Map.of(

@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import { SsoButton } from '@/components/auth/SsoButton';
 import { ErrorNotice } from '@/components/common/ErrorNotice';
 import type { AuthMode } from '@/lib/auth/roles';
@@ -19,7 +18,7 @@ export function LoginView({ mode, from, message }: Readonly<Props>) {
       <div className="flex min-h-dvh flex-col bg-white lg:min-h-0">
         <main className="flex flex-1 items-center justify-center px-6 py-12">
           <div className="flex w-full max-w-[760px] flex-col items-center justify-center text-center">
-            <Image src={logo} alt="KWE" id="login-logo" data-testid="login-logo" className="h-16 w-auto sm:h-20" priority />
+            <img src={logo.src} width={logo.width} height={logo.height} alt="KWE" id="login-logo" data-testid="login-logo" className="h-16 w-auto sm:h-20" />
             <div className="mt-10 text-base font-medium uppercase tracking-[0.18em] text-[#A8954A] sm:text-lg">Welcome To</div>
             <h1
               id="login-title"
@@ -55,7 +54,7 @@ export function LoginView({ mode, from, message }: Readonly<Props>) {
         </footer>
       </div>
       <div className="relative hidden items-center overflow-hidden bg-[#1A2333] px-20 lg:flex">
-        <Image src={HERO} alt="" fill sizes="50vw" className="object-cover opacity-25" priority />
+        <img src={HERO} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
         <div className="absolute inset-0 bg-[#1A2333]/60" />
         <h2 className="relative w-full text-center text-5xl font-bold leading-[1.05] tracking-[-0.04em] text-white xl:text-6xl">
           Streamlined

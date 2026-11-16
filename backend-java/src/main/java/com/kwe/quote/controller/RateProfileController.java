@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Rate Management. READ_WRITE only. 409 = overlapping Active profile or stale version. */
+/** Rate Management. Access per pf_apipermissions. 409 = overlapping Active profile or stale version. */
 @RestController
 @RequestMapping("/api/v1/rate-profiles")
 @Tag(name = "RateProfiles", description = "Rate Profiles (Freight / Origin) and their Rate Matrix")

@@ -1,0 +1,160 @@
+
+KWE QuoteHub RBAC - Revised Database Schema
+KWE QuoteHub – Revised RBAC Database Schema
+Overview
+7
+Core RBAC tablesProfile, master and mapping tables.
+UUID
+User identifierInternally generated account_id.
+Function + Action
+Permission modelAtomic business-operation permissions.
+Relationships
+pf_users
+  └── pf_userroles ── md_roles
+                         └── pf_rolepermissions ── md_permissions
+md_menus
+  └── pf_menupermissions ── md_permissions
+md_menus.parentmenucode ──> md_menus.code (submenu hierarchy)
+Effective authorization:
+pf_users → pf_userroles → md_roles → pf_rolepermissions → md_permissions
+Menu visibility:
+md_menus → pf_menupermissions → md_permissions
+Column details
+    pf_users Profile
+Column | Data Type | Nullable | Default | Key | Description | 
+accountid | UUIDv7 | NO | gen_random_uuid() | PK | Internally generated KWE identifier; independent of Entra object ID. | 
+emailid | VARCHAR(254) | NO |  | UQ | Sign-in/contact email; not the permanent identity key. | 
+name | VARCHAR(150) | YES |  |  | Display name synchronized from Microsoft Entra ID. | 
+usertype | VARCHAR(20) | NO | 'HUMAN' |  | HUMAN or SERVICE. | 
+status | BOOLEAN | NO | TRUE |  | TRUE = active; FALSE = inactive. | 
+rowversion | INTEGER | NO | 1 |  | Optimistic-locking version. | 
+cby | VARCHAR(100) | NO |  |  | Created by. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation; retain only if required. | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone; retain only if required. | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    md_roles Master
+Purpose: Master definitions of application roles.
+    Column | Data Type | Nullable | Default | Key | Description | 
+code | VARCHAR(50) | NO |  | PK | Unique role code, e.g. ADMIN or RATE_VIEWER. | 
+name | VARCHAR(100) | NO |  |  | Human-readable role name. | 
+description | VARCHAR(500) | YES |  |  | Purpose of the role. | 
+status | BOOLEAN | NO | TRUE |  | TRUE = active; FALSE = inactive. | 
+rowversion | INTEGER | NO | 1 |  | Optimistic-locking version. | 
+cby | VARCHAR(100) | NO |  |  | Created by. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    pf_userroles Transactional
+Column | Data Type | Nullable | Default | Key | Description | 
+userroleid | BIGINT GENERATED ALWAYS AS IDENTITY | NO |  | PK | Surrogate primary key. | 
+accountid | UUID | NO |  | FK | References pf_users.account_id. | 
+rolecode | VARCHAR(50) | NO |  | FK | References md_roles.code. | 
+cby | VARCHAR(100) | NO |  |  | Created by / assignment actor. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Assignment timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    md_permissions Master
+Purpose: Catalog of atomic permissions expressed as business function plus action.
+    Design note: UNIQUE(function, action) is recommended if each function/action pair represents exactly one permission. Permission definitions should be version-controlled and deployed through migration scripts.
+Column | Data Type | Nullable | Default | Key | Description | 
+code | VARCHAR(80) | NO |  | PK | Unique permission code, e.g. RATE_VIEW. | 
+description | VARCHAR(500) | NO |  |  | Description of the permitted operation. | 
+function | VARCHAR(80) | NO |  |  | Business function, e.g. rate. | 
+action | VARCHAR(40) | NO |  |  | Operation: query, view, edit, delete, create or approve. | 
+status | BOOLEAN | NO | TRUE |  | TRUE = active; FALSE = inactive. | 
+rowversion | INTEGER | NO | 1 |  | Optimistic-locking version. | 
+cby | VARCHAR(100) | NO |  |  | Created by. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    pf_rolepermissions Transactional
+    Design note: Add UNIQUE(role_code, permission_code). Retain referenced master records and revoke mappings through controlled operations.
+Column | Data Type | Nullable | Default | Key | Description | 
+rolepermissionid | BIGINT GENERATED ALWAYS AS IDENTITY | NO |  | PK | Surrogate primary key. | 
+rolecode | VARCHAR(50) | NO |  | FK | References md_roles.code. | 
+permissioncode | VARCHAR(80) | NO |  | FK | References md_permissions.code. | 
+cby | VARCHAR(100) | NO |  |  | Created by / assignment actor. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Assignment timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    md_menus Master
+Purpose: UI navigation metadata
+    Column | Data Type | Nullable | Default | Key | Description | 
+code | VARCHAR(80) | NO |  | PK | Unique menu code. | 
+name | VARCHAR(150) | NO |  |  | Menu label displayed in the UI. | 
+parentmenucode | VARCHAR(80) | YES |  | FK | Self-reference to md_menus.code; NULL for top-level menus. | 
+displayorder | INTEGER | NO | 0 |  | Sort order within the same parent. | 
+routepath | VARCHAR(300) | YES |  |  | Frontend route path. | 
+status | BOOLEAN | NO | TRUE |  | TRUE = active; FALSE = inactive. | 
+rowversion | INTEGER | NO | 1 |  | Optimistic-locking version. | 
+cby | VARCHAR(100) | NO |  |  | Created by. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    pf_menupermissions Transactional
+Purpose: Maps menus to permissions used for UI menu visibility.
+    Column | Data Type | Nullable | Default | Key | Description | 
+menupermissionsid | BIGINT GENERATED ALWAYS AS IDENTITY | NO |  | PK | Surrogate primary key. | 
+menucode | VARCHAR(80) | NO |  | FK | References md_menus.code. | 
+permissioncode | VARCHAR(80) | NO |  | FK | References md_permissions.code. | 
+cby | VARCHAR(100) | NO |  |  | Created by. | 
+cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation;  | 
+ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone;  | 
+mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+    pf_apipermissions Transactional
+    Purpose: API endpoint authorization mapping for endpoint-level access control.
+    Column | Data Type | Nullable | Default | Key | Description | 
+        apipermissionid | BIGINT GENERATED ALWAYS AS IDENTITY | NO |  | PK | Primary key. | 
+        httpmethod | VARCHAR(10) | NO |  |  | HTTP method, e.g. GET, POST, PUT, DELETE. | 
+        endpointpattern | VARCHAR(255) | NO |  |  | API endpoint pattern. | 
+        permissioncode | VARCHAR(80) | NO |  | FK | FK to md_permissions.code. | 
+        status | BOOLEAN | NO | TRUE |  | Active / inactive flag. | 
+        cby | VARCHAR(100) | NO |  |  | Created by. | 
+        cdate | TIMESTAMPTZ | NO | CURRENT_TIMESTAMP |  | Creation timestamp. | 
+        ctz | VARCHAR(5) | YES |  |  | Optional timezone abbreviation. | 
+        ctzstd | VARCHAR(50) | YES |  |  | Optional IANA timezone. | 
+        mby | VARCHAR(100) | YES |  |  | Last modified by. | 
+        mdate | TIMESTAMPTZ | YES |  |  | Last modification timestamp. | 
+        mtz | VARCHAR(5) | YES |  |  | Optional modification timezone abbreviation. | 
+        mtzstd | VARCHAR(50) | YES |  |  | Optional modification IANA timezone. | 
+Proposed view: v_user_effective_permissions
+Returns active users' effective permissions through assigned active roles. The view is a retrieval convenience; it does not enforce authorization.
+CREATE VIEW v_user_effective_permissions AS
+SELECT u.accountid, u.useremail, u.username,
+       r.code AS rolecode, p.code AS permissioncode,
+       p.function, p.action
+FROM pf_users u
+JOIN pf_userroles ur ON ur.accountid = u.accountid
+JOIN md_roles r ON r.code = ur.rolecode
+JOIN pf_rolepermissions rp ON rp.rolecode = r.code
+JOIN md_permissions p ON p.code = rp.permissioncode
+WHERE u.status = TRUE AND r.status = TRUE AND p.status = TRUE;
+A user may receive the same permission through multiple roles; consumers can use DISTINCT or aggregate as required.

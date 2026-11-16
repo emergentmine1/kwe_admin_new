@@ -1,7 +1,6 @@
 'use client';
 
 import { Settings } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { isEmail } from '@/lib/auth/roles';
@@ -44,7 +43,7 @@ export function OktaUsernameCard({ initialEmail, onNext, hint }: Readonly<Props>
           className="mx-auto max-w-[500px] rounded border border-slate-200 bg-white shadow-sm"
         >
           <div className="flex justify-center border-b border-slate-200 py-8">
-            <Image src={logo} alt="KWE" className="h-14 w-auto" priority />
+            <img src={logo.src} width={logo.width} height={logo.height} alt="KWE" className="h-14 w-auto" />
           </div>
           <div className="px-6 py-8 sm:px-14">
             <h2 className="text-center text-lg font-medium text-slate-600">Sign In</h2>

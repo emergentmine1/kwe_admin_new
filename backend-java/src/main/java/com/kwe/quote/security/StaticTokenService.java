@@ -18,25 +18,25 @@ import org.springframework.stereotype.Service;
 /**
  * TEMPORARY dummy-login token issuer, active only when KWE_AUTH_MODE=static. Checks one shared
  * password from STATIC_LOGIN_PASSWORD (nothing is stored in the database) and still requires an
- * active kwe_admin_users row. Remove once Okta is configured.
+ * active pf_users row with at least one permission. Remove once Okta is configured.
  */
 @Service
 public class StaticTokenService {
 
-    public record IssuedToken(String accessToken, long expiresIn, String email, AdminRole role) {
+    public record IssuedToken(String accessToken, long expiresIn, String email) {
     }
 
     private final AuthProperties props;
-    private final AdminUserService adminUserService;
+    private final AccessService accessService;
     private final Clock clock;
 
-    public StaticTokenService(AuthProperties props, AdminUserService adminUserService, Clock clock) {
+    public StaticTokenService(AuthProperties props, AccessService accessService, Clock clock) {
         this.props = props;
-        this.adminUserService = adminUserService;
+        this.accessService = accessService;
         this.clock = clock;
     }
 
-    /** Empty when the mode is not static, the password is wrong, or the user has no active role. */
+    /** Empty when the mode is not static, the password is wrong, or the user has no permission. */
     public Optional<IssuedToken> login(String rawEmail, String password) {
         if (!props.isStatic()) {
             return Optional.empty();
@@ -47,11 +47,11 @@ public class StaticTokenService {
                         password.getBytes(StandardCharsets.UTF_8))) {
             return Optional.empty();
         }
-        String email = AdminUserService.normalise(rawEmail);
-        return adminUserService.resolveRole(email).map(role -> issue(email, role));
+        String email = AccessService.normalise(rawEmail);
+        return accessService.resolve(email).map(access -> issue(access.email()));
     }
 
-    private IssuedToken issue(String email, AdminRole role) {
+    private IssuedToken issue(String email) {
         Instant now = Instant.now(clock);
         long ttlSeconds = Math.max(1, props.staticLogin().ttlMinutes()) * 60L;
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -64,6 +64,6 @@ public class StaticTokenService {
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(JwtDecoderConfig.staticKey(props)));
         String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
                 .getTokenValue();
-        return new IssuedToken(token, ttlSeconds, email, role);
+        return new IssuedToken(token, ttlSeconds, email);
     }
 }

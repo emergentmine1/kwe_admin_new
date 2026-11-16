@@ -11,7 +11,7 @@ export default async function SsoSignInPage({ searchParams }: Readonly<{ searchP
   if (mode === 'okta') redirect('/login');
   const { from } = await searchParams;
   const state = await getAuthState();
-  if (state.status === 'authorized') redirect(landingFor(state.user.role, from));
+  if (state.status === 'authorized') redirect(landingFor(state.user, from));
 
   const accounts = DEMO_ACCOUNTS.map((a) => `${a.email} (${a.note})`).join(' · ');
   const password = mode === 'demo' ? ` · password ${DEMO_PASSWORD}` : '';

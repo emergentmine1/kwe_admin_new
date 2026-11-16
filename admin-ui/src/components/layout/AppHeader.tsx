@@ -7,7 +7,6 @@ import { UserAvatar } from '@/components/common/UserAvatar';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ROLE_LABELS } from '@/lib/auth/roles';
 import { tid } from '@/lib/utils';
 
 export function AppHeader({ onMenuClick }: Readonly<{ onMenuClick: () => void }>) {
@@ -43,7 +42,7 @@ export function AppHeader({ onMenuClick }: Readonly<{ onMenuClick: () => void }>
                   {user.email}
                 </div>
                 <div {...tid('header-user-role')} className="text-[11px] leading-tight text-slate-500">
-                  {ROLE_LABELS[user.role]}
+                  {user.name ?? 'KWE user'}
                 </div>
               </div>
               <ChevronDown className="h-4 w-4 text-slate-500" />
@@ -53,7 +52,7 @@ export function AppHeader({ onMenuClick }: Readonly<{ onMenuClick: () => void }>
             <DropdownMenuLabel>
               <div className="flex flex-col">
                 <span className="truncate font-semibold">{user.email}</span>
-                <span className="text-xs font-normal text-slate-500">{ROLE_LABELS[user.role]}</span>
+                <span className="text-xs font-normal text-slate-500">{user.permissions.length} permissions</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

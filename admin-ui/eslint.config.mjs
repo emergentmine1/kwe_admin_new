@@ -11,6 +11,9 @@ export default defineConfig([
     rules: {
       'react/forbid-dom-props': ['error', { forbid: ['style'] }],
       'react/no-danger': 'error',
+      // next/image adds inline style attributes, which our strict CSP blocks.
+      '@next/next/no-img-element': 'off',
+      'no-restricted-imports': ['error', { paths: [{ name: 'next/image', message: 'Use <img>: next/image emits inline styles (CSP).' }] }],
       'no-console': ['error', { allow: ['warn', 'error'] }],
     },
   },

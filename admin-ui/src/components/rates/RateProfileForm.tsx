@@ -5,7 +5,7 @@ import { AlertCircle, ArrowLeft, Copy, Loader2, Save } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
-import { toast } from 'sonner';
+import { toast } from '@/lib/toast';
 import { useSession } from '@/components/auth/SessionProvider';
 import { LoadingBlock } from '@/components/common/Blocks';
 import { PageHeader } from '@/components/common/PageHeader';
